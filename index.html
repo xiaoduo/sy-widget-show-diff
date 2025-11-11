@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Show Diff Widget</title>
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -136,6 +139,20 @@
             padding: 0 12px;
             white-space: pre-wrap;
             word-break: break-all;
+        }
+
+        /* Syntax highlighting styles */
+        .line-content code {
+            background: none;
+            padding: 0;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .line-content .hljs {
+            background: transparent;
+            padding: 0;
+            overflow: visible;
         }
 
         .char-diff {
@@ -415,9 +432,27 @@
             return diff;
         }
 
-        // Character-level diff for modified lines
-        function getCharDiff(oldStr, newStr) {
-            if (!oldStr || !newStr) return { old: oldStr || '', new: newStr || '' };
+        // Apply syntax highlighting to code
+        function highlightCode(code, language) {
+            try {
+                if (language && hljs.getLanguage(language)) {
+                    return hljs.highlight(code, { language: language }).value;
+                } else {
+                    return hljs.highlightAuto(code).value;
+                }
+            } catch (e) {
+                console.error('Syntax highlighting error:', e);
+                return escapeHtml(code);
+            }
+        }
+
+        // Character-level diff for modified lines with syntax highlighting
+        function getCharDiff(oldStr, newStr, language) {
+            if (!oldStr || !newStr) {
+                const oldHighlighted = oldStr ? highlightCode(oldStr, language) : '';
+                const newHighlighted = newStr ? highlightCode(newStr, language) : '';
+                return { old: oldHighlighted, new: newHighlighted };
+            }
             
             const oldChars = oldStr.split('');
             const newChars = newStr.split('');
@@ -437,23 +472,23 @@
                 suffixLen++;
             }
             
-            const prefix = escapeHtml(oldStr.substring(0, prefixLen));
-            const suffix = escapeHtml(oldStr.substring(n - suffixLen));
+            const prefix = highlightCode(oldStr.substring(0, prefixLen), language);
+            const suffix = highlightCode(oldStr.substring(n - suffixLen), language);
             const oldMiddle = oldStr.substring(prefixLen, n - suffixLen);
             const newMiddle = newStr.substring(prefixLen, m - suffixLen);
             
             const oldResult = prefix + 
-                (oldMiddle ? `<span class="char-diff">${escapeHtml(oldMiddle)}</span>` : '') + 
+                (oldMiddle ? `<span class="char-diff">${highlightCode(oldMiddle, language)}</span>` : '') + 
                 suffix;
             const newResult = prefix + 
-                (newMiddle ? `<span class="char-diff">${escapeHtml(newMiddle)}</span>` : '') + 
+                (newMiddle ? `<span class="char-diff">${highlightCode(newMiddle, language)}</span>` : '') + 
                 suffix;
             
             return { old: oldResult, new: newResult };
         }
 
         // 渲染diff结果
-        function renderDiff(diffResult) {
+        function renderDiff(diffResult, language = 'plaintext') {
             const container = document.getElementById('diffContent');
             
             if (diffResult.length === 0) {
@@ -513,8 +548,8 @@
                     
                     for (let j = 0; j < maxLines; j++) {
                         if (j < removedBlock.length && j < addedBlock.length) {
-                            // Both lines exist - apply char diff
-                            const charDiff = getCharDiff(removedBlock[j].content, addedBlock[j].content);
+                            // Both lines exist - apply char diff with syntax highlighting
+                            const charDiff = getCharDiff(removedBlock[j].content, addedBlock[j].content, language);
                             grouped.push({
                                 type: 'removed',
                                 content: charDiff.old,
@@ -528,23 +563,43 @@
                                 isHtml: true
                             });
                         } else if (j < removedBlock.length) {
-                            // Only removed line exists
-                            grouped.push(removedBlock[j]);
+                            // Only removed line exists - apply syntax highlighting
+                            grouped.push({
+                                ...removedBlock[j],
+                                content: highlightCode(removedBlock[j].content, language),
+                                isHtml: true
+                            });
                         } else {
-                            // Only added line exists
-                            grouped.push(addedBlock[j]);
+                            // Only added line exists - apply syntax highlighting
+                            grouped.push({
+                                ...addedBlock[j],
+                                content: highlightCode(addedBlock[j].content, language),
+                                isHtml: true
+                            });
                         }
                     }
                 } else {
-                    // Only one type exists - add them as is
-                    grouped.push(...removedBlock);
-                    grouped.push(...addedBlock);
+                    // Only one type exists - apply syntax highlighting
+                    removedBlock.forEach(line => {
+                        grouped.push({
+                            ...line,
+                            content: highlightCode(line.content, language),
+                            isHtml: true
+                        });
+                    });
+                    addedBlock.forEach(line => {
+                        grouped.push({
+                            ...line,
+                            content: highlightCode(line.content, language),
+                            isHtml: true
+                        });
+                    });
                 }
             }
 
             grouped.forEach(line => {
                 const lineNum = line.oldLine || line.newLine || '';
-                const content = line.isHtml ? line.content : escapeHtml(line.content);
+                const content = line.isHtml ? line.content : highlightCode(line.content, language);
                 html += `
                     <div class="diff-line ${line.type}">
                         <span class="line-number">${lineNum}</span>
@@ -657,21 +712,28 @@
             const leftBlock = await callAPI('/api/block/getBlockKramdown', { id: codeBlocks[0].id });
             const rightBlock = await callAPI('/api/block/getBlockKramdown', { id: codeBlocks[1].id });
 
-            // 从Kramdown中提取代码内容
-            const leftContent = extractCodeContent(leftBlock.data.kramdown);
-            const rightContent = extractCodeContent(rightBlock.data.kramdown);
+            // 从Kramdown中提取代码内容和语言
+            const leftData = extractCodeContent(leftBlock.data.kramdown);
+            const rightData = extractCodeContent(rightBlock.data.kramdown);
 
-            return { left: leftContent, right: rightContent };
+            return { 
+                left: leftData.content, 
+                right: rightData.content,
+                language: leftData.language || rightData.language || 'plaintext'
+            };
         }
 
-        // 从Kramdown提取代码内容
+        // 从Kramdown提取代码内容和语言
         function extractCodeContent(kramdown) {
             // 匹配代码块: ```language\ncode\n```
-            const match = kramdown.match(/```[\s\S]*?\n([\s\S]*?)```/);
-            if (match && match[1]) {
-                return match[1].trim();
+            const match = kramdown.match(/```([\w]*)\n([\s\S]*?)```/);
+            if (match) {
+                return {
+                    content: match[2] ? match[2].trim() : '',
+                    language: match[1] || ''
+                };
             }
-            return '';
+            return { content: '', language: '' };
         }
 
         // 加载并显示diff
@@ -680,7 +742,7 @@
                 document.getElementById('diffContent').innerHTML = '<div class="loading">正在加载...</div>';
                 
                 const superBlock = await getSuperBlockAbove();
-                const { left, right } = await extractCodeBlocks(superBlock.id);
+                const { left, right, language } = await extractCodeBlocks(superBlock.id);
 
                 if (!left && !right) {
                     showStatus('代码块为空，请添加代码内容', 'error');
@@ -694,7 +756,7 @@
                 }
 
                 const diffResult = computeDiff(left, right);
-                renderDiff(diffResult);
+                renderDiff(diffResult, language);
                 showHeaderStatus('已更新');
 
             } catch (error) {
