@@ -1,16 +1,16 @@
 {
-  "name": "widget-sample",
-  "author": "Vanessa",
-  "url": "https://github.com/siyuan-note/widget-sample",
-  "version": "0.0.3",
+  "name": "sy-widget-show-diff",
+  "author": "xiaoduo",
+  "url": "https://github.com/xiaoduo/sy-widget-show-diff",
+  "version": "0.0.1",
   "minAppVersion": "2.8.8",
   "displayName": {
-    "default": "Widget Sample",
-    "zh_CN": "挂件示例"
+    "default": "Show Diff Widget",
+    "zh_CN": "代码差异对比挂件"
   },
   "description": {
-    "default": "This is a widget sample",
-    "zh_CN": "这是一个挂件示例"
+    "default": "A widget that automatically displays the diff between two code blocks in a super block above it",
+    "zh_CN": "自动显示上方超级块中左右两个代码块差异的挂件"
   },
   "readme": {
     "default": "README.md",
@@ -20,11 +20,9 @@
     "openCollective": "",
     "patreon": "",
     "github": "",
-    "custom": [
-      "https://ld246.com/sponsor"
-    ]
+    "custom": []
   },
   "keywords": [
-    "sample", "示例"
+    "diff", "compare", "code", "差异对比", "代码对比"
   ]
 }

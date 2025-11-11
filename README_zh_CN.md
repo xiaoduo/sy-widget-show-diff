@@ -1,106 +1,145 @@
-[English](https://github.com/siyuan-note/widget-sample/blob/main/README.md)
+# 思源笔记代码差异对比挂件
 
-# 思源笔记挂件示例
+一个自动显示超级块中两个代码块差异的思源笔记挂件。
 
-## 开始
+[English](README.md)
 
-* 通过 <kbd>Use this widget</kbd> 按钮将该库文件复制到你自己的库中，请注意库名必须和挂件名称一致，默认分支必须为 `main`
-* 将你的库克隆到本地开发文件夹中，为了方便可以直接将开发文件夹放置在 `{workspace}/conf/appearance/widgets/` 下
+## 功能特性
+
+- 🔄 **自动刷新**：每5秒自动更新差异对比结果
+- 📝 **模板插入**：一键插入对比模板结构
+- 🎨 **可视化对比**：清晰的可视化显示，绿色（新增）和红色（删除）
+- 📊 **统计信息**：显示新增和删除的行数
+- 🖥️ **100%宽度**：默认全宽显示
+- ⚡ **实时显示**：从上方超级块读取内容并立即显示差异
+
+## 使用方法
+
+### 基本工作流程
+
+```
+┌────────────────────────────────────────┐
+│  超级块（左右并排）                      │
+│  ┌─────────────┐  ┌─────────────┐     │
+│  │ ```         │  │ ```         │     │
+│  │ 原始代码    │  │ 修改后代码   │     │
+│  │ ```         │  │ ```         │     │
+│  └─────────────┘  └─────────────┘     │
+└────────────────────────────────────────┘
+              ↓
+┌────────────────────────────────────────┐
+│  Widget（只显示diff结果）                │
+│  - 删除的行（红色背景）                   │
+│  + 新增的行（绿色背景）                   │
+│    未改变的行                            │
+└────────────────────────────────────────┘
+```
+
+### 分步指南
+
+1. **插入挂件**：在思源笔记文档中添加此挂件
+2. **插入模板**：点击"📝 插入对比模板"按钮，自动在挂件上方插入超级块模板
+3. **添加代码**：用实际代码替换占位符文本（左侧：原始代码，右侧：修改后代码）
+4. **查看差异**：差异对比结果会自动显示在下方的挂件中
+
+### 手动设置
+
+如果你喜欢手动创建结构：
+
+1. 在挂件上方创建一个行布局的超级块
+2. 在超级块中并排添加两个代码块
+3. 在左侧代码块中放置原始代码
+4. 在右侧代码块中放置修改后的代码
+5. 挂件会自动检测并显示差异
+
+## 控制按钮
+
+- **📝 插入对比模板**：在挂件上方插入对比模板结构
+- **🔄 刷新对比**：手动刷新差异对比（也会每5秒自动刷新）
+
+## 显示特性
+
+- **行号**：显示行号以便参考
+- **颜色编码**：
+  - 🟢 绿色背景：新增的行
+  - 🔴 红色背景：删除的行
+  - ⚪ 白色背景：未改变的行
+- **统计信息**：显示新增和删除的总行数
+- **响应式**：全宽显示，自适应容器大小
+
+## 安装方法
+
+1. 从思源笔记集市下载此挂件
+2. 或将此仓库克隆到 `{工作空间}/conf/appearance/widgets/sy-widget-show-diff`
+3. 重启思源笔记或刷新挂件列表
+
+## 系统要求
+
+- 思源笔记版本：2.8.8 或更高
+- 挂件必须放置在包含两个代码块的超级块下方
+
+## 技术细节
+
+- 使用最长公共子序列（LCS）算法进行精确的差异计算
+- 通过本地 API 与思源笔记通信（http://127.0.0.1:6806）
+- 纯 JavaScript 实现，无外部依赖
+- 自动检测挂件位置并从上方超级块读取内容
+
+## 常见问题
+
+**错误："在挂件上方未找到超级块"**
+- 确保挂件正上方有一个超级块
+- 超级块应该包含至少两个代码块
+
+**差异结果为空**
+- 检查两个代码块是否都包含内容
+- 验证代码块是否正确使用 ``` 标记格式化
+
+**挂件无法加载**
+- 确保思源笔记正在运行
+- 检查 API 端口 6806 是否可访问
+- 尝试手动点击"🔄 刷新对比"按钮
 
 ## 开发
 
-* widget.json
-* icon.png (160*160)
-* preview.png (1024*768)
-* README*.md
-* index.html
+### 项目结构
 
-## widget.json
-
-```json
-{
-  "name": "widget-sample",
-  "author": "Vanessa",
-  "url": "https://github.com/siyuan-note/widget-sample",
-  "version": "0.0.3",
-  "minAppVersion": "2.8.8",
-  "displayName": {
-    "default": "Widget Sample",
-    "zh_CN": "挂件示例"
-  },
-  "description": {
-    "default": "This is a widget sample",
-    "zh_CN": "这是一个挂件示例"
-  },
-  "readme": {
-    "default": "README.md",
-    "zh_CN": "README_zh_CN.md"
-  },
-  "funding": {
-    "openCollective": "",
-    "patreon": "",
-    "github": "",
-    "custom": [
-      "https://ld246.com/sponsor"
-    ]
-  },
-  "keywords": [
-    "sample", "示例"
-  ]
-}
+```
+sy-widget-show-diff/
+├── widget.json          # 挂件配置文件
+├── index.html          # 主HTML文件（包含CSS和JavaScript）
+├── icon.png            # 挂件图标（160x160）
+├── preview.png         # 预览图（1024x768）
+├── README.md           # 英文说明文档
+├── README_zh_CN.md     # 中文说明文档
+└── LICENSE             # 许可证文件
 ```
 
-* `name`：挂件名称，必须和库名一致，且全局唯一（集市中不能有重名挂件）
-* `author`：挂件作者名
-* `url`：挂件仓库地址
-* `version`：挂件版本号，建议遵循 [semver](https://semver.org/lang/zh-CN/) 规范
-* `minAppVersion`：挂件支持的最低思源笔记版本号
-* `displayName`：模板显示名称，主要用于模板集市列表中显示，支持多语言
-    * `default`：默认语言，必须存在
-    * `zh_CN`、`en_US` 等其他语言：可选，建议至少提供中文和英文
-* `description`：挂件描述，主要用于挂件集市列表中显示，支持多语言
-    * `default`：默认语言，必须存在
-    * `zh_CN`、`en_US` 等其他语言：可选，建议至少提供中文和英文
-* `readme`：自述文件名，主要用于挂件集市详情页中显示，支持多语言
-    * `default`：默认语言，必须存在
-    * `zh_CN`、`en_US` 等其他语言：可选，建议至少提供中文和英文
-* `funding`：挂件赞助信息
-    * `openCollective`：Open Collective 名称
-    * `patreon`：Patreon 名称
-    * `github`：GitHub 登录名
-    * `custom`：自定义赞助链接列表
-* `keywords`：搜索关键字列表，用于集市搜索功能
+### 打包发布
 
-## 打包
+1. 确保所有必需文件都存在
+2. 创建 package.zip，包含以上所有文件
+3. 在 GitHub 上创建新的发布版本
+4. 上传 package.zip 作为附件
 
-无论使用何种方式编译打包，我们最终需要生成一个 package.zip，它至少包含如下文件：
+## 许可证
 
-* icon.png
-* preview.png
-* README*.md
-* widget.json
-* index.html
+MIT License
 
-## 上架集市
+## 作者
 
-* 生成 package.zip
-* 在 GitHub 上创建一个新的发布，使用挂件版本号作为 “Tag
-  version”，示例 https://github.com/siyuan-note/widget-sample/releases
-* 上传 package.zip 作为二进制附件
-* 提交发布
+xiaoduo
 
-如果是第一次发布版本，还需要创建一个 PR 到 [Community Bazaar](https://github.com/siyuan-note/bazaar) 社区集市仓库，修改该库的
-widgets.json。该文件是所有社区挂件库的索引，格式为：
+## 链接
 
-```json
-{
-  "repos": [
-    "username/reponame"
-  ]
-}
-```
+- GitHub：https://github.com/xiaoduo/sy-widget-show-diff
+- 问题反馈：https://github.com/xiaoduo/sy-widget-show-diff/issues
 
-PR 被合并以后集市会通过 GitHub Actions 自动更新索引并部署。后续发布新版本挂件时只需要按照上述步骤创建新的发布即可，不需要再
-PR 社区集市仓库。
+## 更新日志
 
-正常情况下，社区集市仓库每隔 1 小时会自动更新索引并部署，可在 https://github.com/siyuan-note/bazaar/actions 查看部署状态。
+### v0.0.1
+- 初始版本发布
+- 实现基本的代码差异对比功能
+- 支持自动刷新
+- 支持一键插入模板
+- 100%宽度显示
