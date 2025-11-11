@@ -1112,9 +1112,39 @@ ${t.enterSecondCode}
             }
         }
 
+        // LocalStorage key for auto-update preference
+        const AUTO_UPDATE_KEY = 'sy-widget-show-diff-auto-update';
+
+        // Load auto-update preference from localStorage
+        function loadAutoUpdatePreference() {
+            const autoUpdateCheckbox = document.getElementById('autoUpdateCheckbox');
+            const savedPreference = localStorage.getItem(AUTO_UPDATE_KEY);
+            
+            if (savedPreference !== null) {
+                // Use saved preference
+                autoUpdateCheckbox.checked = savedPreference === 'true';
+            } else {
+                // Default to checked if no preference saved
+                autoUpdateCheckbox.checked = true;
+            }
+            
+            console.log('Auto-update preference loaded:', autoUpdateCheckbox.checked);
+        }
+
+        // Save auto-update preference to localStorage
+        function saveAutoUpdatePreference(checked) {
+            localStorage.setItem(AUTO_UPDATE_KEY, checked.toString());
+            console.log('Auto-update preference saved:', checked);
+        }
+
         // 事件监听
         document.getElementById('insertBtn').addEventListener('click', insertComparisonTemplate);
         document.getElementById('refreshBtn').addEventListener('click', loadAndShowDiff);
+        
+        // Listen for auto-update checkbox changes
+        document.getElementById('autoUpdateCheckbox').addEventListener('change', (event) => {
+            saveAutoUpdatePreference(event.target.checked);
+        });
 
         // 调试信息
         console.log('Widget ID:', widgetId);
@@ -1122,6 +1152,9 @@ ${t.enterSecondCode}
 
         // 初始化：获取语言设置并自动加载
         async function initialize() {
+            // Load saved auto-update preference
+            loadAutoUpdatePreference();
+            
             await getSiYuanLang();
             
             if (widgetId) {
