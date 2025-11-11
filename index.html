@@ -26,22 +26,21 @@
         }
 
         .control-panel {
-            margin-bottom: 16px;
-            padding: 12px;
-            background: white;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            margin-left: 16px;
         }
 
         .btn {
-            padding: 8px 16px;
+            padding: 6px 12px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
             margin-right: 8px;
+            white-space: nowrap;
         }
 
         .btn-primary {
@@ -297,17 +296,16 @@
 </head>
 <body>
     <div class="widget-container">
-        <div class="control-panel">
-            <button id="insertBtn" class="btn btn-primary">📝 插入对比模板</button>
-            <button id="refreshBtn" class="btn btn-success">🔄 刷新对比</button>
-        </div>
-        
         <div id="statusMessage"></div>
         
         <div class="diff-container">
             <div class="diff-header">
                 <span class="diff-header-title">差异对比结果</span>
                 <span id="headerStatus" class="diff-header-status"></span>
+                <div class="control-panel">
+                    <button id="insertBtn" class="btn btn-primary">📝 插入对比模板</button>
+                    <button id="refreshBtn" class="btn btn-success">🔄 刷新对比</button>
+                </div>
                 <div class="auto-update-control">
                     <input type="checkbox" id="autoUpdateCheckbox" checked>
                     <label for="autoUpdateCheckbox">自动更新</label>
