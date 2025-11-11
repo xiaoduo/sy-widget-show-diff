@@ -126,12 +126,32 @@
         }
 
         .line-number {
-            min-width: 50px;
-            padding: 0 12px;
+            min-width: 90px;
+            padding: 0 8px;
             text-align: right;
             color: rgba(27,31,35,0.3);
             user-select: none;
             flex-shrink: 0;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+            background: #f6f8fa;
+            border-right: 1px solid #e1e4e8;
+        }
+        
+        .line-number-old {
+            display: inline-block;
+            min-width: 40px;
+            text-align: right;
+            padding-right: 8px;
+            border-right: 1px solid #e1e4e8;
+        }
+        
+        .line-number-new {
+            display: inline-block;
+            min-width: 40px;
+            text-align: right;
         }
 
         .line-content {
@@ -331,8 +351,8 @@
             <div id="diffContent" class="diff-content">
                 <div class="empty-state">
                     <div class="empty-state-icon">📊</div>
-                    <p>等待加载对比数据...</p>
-                    <p style="font-size: 12px; color: #adb5bd;">请在此挂件上方插入对比模板或手动创建包含左右代码块的超级块</p>
+                    <p id="emptyStateText">等待加载对比数据...</p>
+                    <p id="emptyStateHint" style="font-size: 12px; color: #adb5bd;">请在此挂件上方插入对比模板或手动创建包含左右代码块的超级块</p>
                 </div>
             </div>
         </div>
@@ -343,93 +363,211 @@
         const widgetId = window.frameElement?.parentElement?.parentElement?.dataset?.nodeId;
         const API_BASE = 'http://127.0.0.1:6806';
 
-        // Myers diff algorithm implementation
+        // Internationalization
+        const i18n = {
+            'zh_CN': {
+                diffTitle: '差异对比结果',
+                insertTemplate: '📝 插入对比模板',
+                refresh: '🔄 刷新对比',
+                autoUpdate: '自动更新',
+                waitingForData: '等待加载对比数据...',
+                insertTemplateHint: '请在此挂件上方插入对比模板或手动创建包含左右代码块的超级块',
+                identical: '两段代码完全相同',
+                added: '新增',
+                removed: '删除',
+                loading: '正在加载...',
+                emptyCode: '代码块为空',
+                loadFailed: '加载失败',
+                templateInserted: '模板已插入到挂件上方',
+                templateInsertFailed: '插入模板失败',
+                updated: '已更新',
+                emptyCodeBlock: '代码块为空，请添加代码内容',
+                originalCode: '原始代码',
+                modifiedCode: '修改后代码',
+                enterFirstCode: '在这里输入第一段代码',
+                enterSecondCode: '在这里输入第二段代码',
+                widgetIdError: '无法获取挂件ID，请检查挂件配置',
+                errorWidgetId: '无法获取挂件ID',
+                errorWidgetInfo: '无法获取挂件块信息',
+                errorDocBlocks: '无法获取文档块',
+                errorFindWidget: '无法找到挂件块',
+                errorNoSuperBlock: '在挂件上方未找到超级块',
+                errorInsufficientBlocks: '超级块中代码块数量不足（需要至少2个）',
+                errorInsufficientCodeBlocks: '超级块中未找到足够的代码块（需要至少2个）'
+            },
+            'en_US': {
+                diffTitle: 'Diff Comparison Result',
+                insertTemplate: '📝 Insert Template',
+                refresh: '🔄 Refresh',
+                autoUpdate: 'Auto Update',
+                waitingForData: 'Waiting for comparison data...',
+                insertTemplateHint: 'Please insert a comparison template above this widget or manually create a super block containing left and right code blocks',
+                identical: 'Both code blocks are identical',
+                added: 'Added',
+                removed: 'Removed',
+                loading: 'Loading...',
+                emptyCode: 'Code block is empty',
+                loadFailed: 'Load failed',
+                templateInserted: 'Template inserted above widget',
+                templateInsertFailed: 'Failed to insert template',
+                updated: 'Updated',
+                emptyCodeBlock: 'Code block is empty, please add code content',
+                originalCode: 'Original Code',
+                modifiedCode: 'Modified Code',
+                enterFirstCode: 'Enter the first code snippet here',
+                enterSecondCode: 'Enter the second code snippet here',
+                widgetIdError: 'Cannot get widget ID, please check widget configuration',
+                errorWidgetId: 'Cannot get widget ID',
+                errorWidgetInfo: 'Cannot get widget block info',
+                errorDocBlocks: 'Cannot get document blocks',
+                errorFindWidget: 'Cannot find widget block',
+                errorNoSuperBlock: 'No super block found above widget',
+                errorInsufficientBlocks: 'Insufficient code blocks in super block (at least 2 required)',
+                errorInsufficientCodeBlocks: 'Not enough code blocks found in super block (at least 2 required)'
+            }
+        };
+
+        let currentLang = 'zh_CN';
+        let t = i18n[currentLang];
+
+        // Get SiYuan language setting
+        async function getSiYuanLang() {
+            try {
+                const response = await callAPI('/api/system/getConf', {});
+                console.log('SiYuan config response:', response);
+                if (response.code === 0 && response.data && response.data.lang) {
+                    console.log('Detected language:', response.data.lang);
+                    currentLang = response.data.lang;
+                    if (!i18n[currentLang]) {
+                        console.log('Language not supported, falling back to zh_CN');
+                        currentLang = 'zh_CN';
+                    }
+                    t = i18n[currentLang];
+                    console.log('Current language set to:', currentLang);
+                    updateUILanguage();
+                } else {
+                    console.log('Could not get language from response, using default zh_CN');
+                }
+            } catch (error) {
+                console.error('Failed to get language setting:', error);
+            }
+        }
+
+        // Update UI text based on current language
+        function updateUILanguage() {
+            document.querySelector('.diff-header-title').textContent = t.diffTitle;
+            document.getElementById('insertBtn').innerHTML = t.insertTemplate;
+            document.getElementById('refreshBtn').innerHTML = t.refresh;
+            document.querySelector('.auto-update-control label').textContent = t.autoUpdate;
+            
+            const emptyStateText = document.getElementById('emptyStateText');
+            const emptyStateHint = document.getElementById('emptyStateHint');
+            if (emptyStateText) emptyStateText.textContent = t.waitingForData;
+            if (emptyStateHint) emptyStateHint.textContent = t.insertTemplateHint;
+        }
+
+        // Myers diff algorithm implementation with improved line matching
         function computeDiff(text1, text2) {
             const lines1 = text1.split('\n');
             const lines2 = text2.split('\n');
-            const n = lines1.length;
-            const m = lines2.length;
-            const max = n + m;
-            const v = {};
-            const trace = [];
-
-            v[1] = 0;
-            for (let d = 0; d <= max; d++) {
-                trace.push({ ...v });
-                for (let k = -d; k <= d; k += 2) {
-                    let x;
-                    if (k === -d || (k !== d && v[k - 1] < v[k + 1])) {
-                        x = v[k + 1];
-                    } else {
-                        x = v[k - 1] + 1;
-                    }
-                    let y = x - k;
-                    while (x < n && y < m && lines1[x] === lines2[y]) {
-                        x++;
-                        y++;
-                    }
-                    v[k] = x;
-                    if (x >= n && y >= m) {
-                        return buildDiff(lines1, lines2, trace, d);
-                    }
-                }
-            }
-            return buildDiff(lines1, lines2, trace, max);
-        }
-
-        function buildDiff(lines1, lines2, trace, d) {
+            
+            // Use a simpler LCS-based approach for better line pairing
             const diff = [];
-            let x = lines1.length;
-            let y = lines2.length;
-
-            for (let depth = d; depth >= 0; depth--) {
-                const v = trace[depth];
-                const k = x - y;
-                let prevK;
-                if (k === -depth || (k !== depth && v[k - 1] < v[k + 1])) {
-                    prevK = k + 1;
-                } else {
-                    prevK = k - 1;
-                }
-                const prevX = v[prevK];
-                const prevY = prevX - prevK;
-
-                while (x > prevX && y > prevY) {
-                    diff.unshift({
-                        type: 'unchanged',
-                        content: lines1[x - 1],
-                        oldLine: x,
-                        newLine: y
+            const lcs = longestCommonSubsequence(lines1, lines2);
+            
+            let i = 0, j = 0;
+            for (const [line1Idx, line2Idx] of lcs) {
+                // Add removed lines before this match
+                while (i < line1Idx) {
+                    diff.push({
+                        type: 'removed',
+                        content: lines1[i],
+                        oldLine: i + 1,
+                        newLine: null
                     });
-                    x--;
-                    y--;
+                    i++;
                 }
-
-                if (depth > 0) {
-                    if (x > prevX) {
-                        diff.unshift({
-                            type: 'removed',
-                            content: lines1[x - 1],
-                            oldLine: x,
-                            newLine: null,
-                            oldContent: lines1[x - 1],
-                            newContent: y < lines2.length ? lines2[y] : null
-                        });
-                        x--;
-                    } else if (y > prevY) {
-                        diff.unshift({
-                            type: 'added',
-                            content: lines2[y - 1],
-                            oldLine: null,
-                            newLine: y,
-                            oldContent: x < lines1.length ? lines1[x] : null,
-                            newContent: lines2[y - 1]
-                        });
-                        y--;
+                
+                // Add added lines before this match
+                while (j < line2Idx) {
+                    diff.push({
+                        type: 'added',
+                        content: lines2[j],
+                        oldLine: null,
+                        newLine: j + 1
+                    });
+                    j++;
+                }
+                
+                // Add the matching line
+                diff.push({
+                    type: 'unchanged',
+                    content: lines1[i],
+                    oldLine: i + 1,
+                    newLine: j + 1
+                });
+                i++;
+                j++;
+            }
+            
+            // Add remaining removed lines
+            while (i < lines1.length) {
+                diff.push({
+                    type: 'removed',
+                    content: lines1[i],
+                    oldLine: i + 1,
+                    newLine: null
+                });
+                i++;
+            }
+            
+            // Add remaining added lines
+            while (j < lines2.length) {
+                diff.push({
+                    type: 'added',
+                    content: lines2[j],
+                    oldLine: null,
+                    newLine: j + 1
+                });
+                j++;
+            }
+            
+            return diff;
+        }
+        
+        // Longest Common Subsequence algorithm
+        function longestCommonSubsequence(arr1, arr2) {
+            const m = arr1.length;
+            const n = arr2.length;
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+            
+            // Build LCS length table
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (arr1[i - 1] === arr2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
                     }
                 }
             }
-            return diff;
+            
+            // Backtrack to find the actual LCS
+            const lcs = [];
+            let i = m, j = n;
+            while (i > 0 && j > 0) {
+                if (arr1[i - 1] === arr2[j - 1]) {
+                    lcs.unshift([i - 1, j - 1]);
+                    i--;
+                    j--;
+                } else if (dp[i - 1][j] > dp[i][j - 1]) {
+                    i--;
+                } else {
+                    j--;
+                }
+            }
+            
+            return lcs;
         }
 
         // Apply syntax highlighting to code
@@ -495,7 +633,7 @@
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">✅</div>
-                        <p>两段代码完全相同</p>
+                        <p>${t.identical}</p>
                     </div>
                 `;
                 return;
@@ -510,12 +648,12 @@
 
             let html = `
                 <div class="diff-stats">
-                    <span class="added-count">+${stats.added} 新增</span>
-                    <span class="removed-count">-${stats.removed} 删除</span>
+                    <span class="added-count">+${stats.added} ${t.added}</span>
+                    <span class="removed-count">-${stats.removed} ${t.removed}</span>
                 </div>
             `;
 
-            // Improved grouping: handle multiple consecutive removed/added blocks
+            // Improved grouping with better similarity detection
             const grouped = [];
             let i = 0;
             
@@ -523,7 +661,11 @@
                 const curr = diffResult[i];
                 
                 if (curr.type === 'unchanged') {
-                    grouped.push(curr);
+                    grouped.push({
+                        ...curr,
+                        content: highlightCode(curr.content, language),
+                        isHtml: true
+                    });
                     i++;
                     continue;
                 }
@@ -542,44 +684,115 @@
                     i++;
                 }
                 
-                // If we have both removed and added lines, apply char-level diff
+                // If we have both removed and added lines, try to pair similar ones
                 if (removedBlock.length > 0 && addedBlock.length > 0) {
-                    const maxLines = Math.max(removedBlock.length, addedBlock.length);
+                    // Calculate similarity scores for all pairs
+                    const pairs = [];
+                    for (let r = 0; r < removedBlock.length; r++) {
+                        for (let a = 0; a < addedBlock.length; a++) {
+                            const similarity = calculateSimilarity(removedBlock[r].content, addedBlock[a].content);
+                            pairs.push({ r, a, similarity });
+                        }
+                    }
                     
-                    for (let j = 0; j < maxLines; j++) {
-                        if (j < removedBlock.length && j < addedBlock.length) {
-                            // Both lines exist - apply char diff with syntax highlighting
-                            const charDiff = getCharDiff(removedBlock[j].content, addedBlock[j].content, language);
-                            grouped.push({
-                                type: 'removed',
-                                content: charDiff.old,
-                                oldLine: removedBlock[j].oldLine,
-                                isHtml: true
-                            });
-                            grouped.push({
-                                type: 'added',
-                                content: charDiff.new,
-                                newLine: addedBlock[j].newLine,
-                                isHtml: true
-                            });
-                        } else if (j < removedBlock.length) {
-                            // Only removed line exists - apply syntax highlighting
-                            grouped.push({
-                                ...removedBlock[j],
-                                content: highlightCode(removedBlock[j].content, language),
-                                isHtml: true
-                            });
-                        } else {
-                            // Only added line exists - apply syntax highlighting
-                            grouped.push({
-                                ...addedBlock[j],
-                                content: highlightCode(addedBlock[j].content, language),
-                                isHtml: true
+                    // Sort by similarity (highest first)
+                    pairs.sort((a, b) => b.similarity - a.similarity);
+                    
+                    const usedRemoved = new Set();
+                    const usedAdded = new Set();
+                    const pairedItems = [];
+                    
+                    // Pair lines with similarity > 0.3 (threshold for considering them modified versions)
+                    for (const pair of pairs) {
+                        if (!usedRemoved.has(pair.r) && !usedAdded.has(pair.a) && pair.similarity > 0.3) {
+                            usedRemoved.add(pair.r);
+                            usedAdded.add(pair.a);
+                            
+                            const charDiff = getCharDiff(removedBlock[pair.r].content, addedBlock[pair.a].content, language);
+                            pairedItems.push({
+                                removedIndex: pair.r,
+                                addedIndex: pair.a,
+                                removed: {
+                                    type: 'removed',
+                                    content: charDiff.old,
+                                    oldLine: removedBlock[pair.r].oldLine,
+                                    newLine: null,
+                                    isHtml: true
+                                },
+                                added: {
+                                    type: 'added',
+                                    content: charDiff.new,
+                                    oldLine: null,
+                                    newLine: addedBlock[pair.a].newLine,
+                                    isHtml: true
+                                }
                             });
                         }
                     }
-                } else {
-                    // Only one type exists - apply syntax highlighting
+                    
+                    // Sort paired items by their original order
+                    pairedItems.sort((a, b) => a.removedIndex - b.removedIndex);
+                    
+                    // Add all lines in proper order
+                    let removedIdx = 0;
+                    let addedIdx = 0;
+                    
+                    for (const pairedItem of pairedItems) {
+                        // Add unpaired removed lines before this pair
+                        while (removedIdx < pairedItem.removedIndex) {
+                            if (!usedRemoved.has(removedIdx)) {
+                                grouped.push({
+                                    ...removedBlock[removedIdx],
+                                    content: highlightCode(removedBlock[removedIdx].content, language),
+                                    isHtml: true
+                                });
+                            }
+                            removedIdx++;
+                        }
+                        
+                        // Add unpaired added lines before this pair
+                        while (addedIdx < pairedItem.addedIndex) {
+                            if (!usedAdded.has(addedIdx)) {
+                                grouped.push({
+                                    ...addedBlock[addedIdx],
+                                    content: highlightCode(addedBlock[addedIdx].content, language),
+                                    isHtml: true
+                                });
+                            }
+                            addedIdx++;
+                        }
+                        
+                        // Add the paired lines
+                        grouped.push(pairedItem.removed);
+                        grouped.push(pairedItem.added);
+                        removedIdx++;
+                        addedIdx++;
+                    }
+                    
+                    // Add remaining unpaired lines
+                    while (removedIdx < removedBlock.length) {
+                        if (!usedRemoved.has(removedIdx)) {
+                            grouped.push({
+                                ...removedBlock[removedIdx],
+                                content: highlightCode(removedBlock[removedIdx].content, language),
+                                isHtml: true
+                            });
+                        }
+                        removedIdx++;
+                    }
+                    
+                    while (addedIdx < addedBlock.length) {
+                        if (!usedAdded.has(addedIdx)) {
+                            grouped.push({
+                                ...addedBlock[addedIdx],
+                                content: highlightCode(addedBlock[addedIdx].content, language),
+                                isHtml: true
+                            });
+                        }
+                        addedIdx++;
+                    }
+                } else if (removedBlock.length > 0) {
+                    // Only removed lines
                     removedBlock.forEach(line => {
                         grouped.push({
                             ...line,
@@ -587,6 +800,8 @@
                             isHtml: true
                         });
                     });
+                } else if (addedBlock.length > 0) {
+                    // Only added lines
                     addedBlock.forEach(line => {
                         grouped.push({
                             ...line,
@@ -597,12 +812,20 @@
                 }
             }
 
+            // Render with proper line numbers showing original positions (GitHub style)
             grouped.forEach(line => {
-                const lineNum = line.oldLine || line.newLine || '';
                 const content = line.isHtml ? line.content : highlightCode(line.content, language);
+                
+                // Show line numbers in GitHub style - old line | new line
+                let lineNumbers = '';
+                const oldLineNum = line.oldLine || '';
+                const newLineNum = line.newLine || '';
+                
+                lineNumbers = `<span class="line-number-old">${oldLineNum}</span><span class="line-number-new">${newLineNum}</span>`;
+                
                 html += `
                     <div class="diff-line ${line.type}">
-                        <span class="line-number">${lineNum}</span>
+                        <span class="line-number">${lineNumbers}</span>
                         <span class="line-content">${content}</span>
                     </div>
                 `;
@@ -611,6 +834,48 @@
             container.innerHTML = html;
         }
 
+        // Calculate similarity between two strings (0 to 1)
+        function calculateSimilarity(str1, str2) {
+            if (str1 === str2) return 1;
+            if (!str1 || !str2) return 0;
+            
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const maxLen = Math.max(len1, len2);
+            
+            if (maxLen === 0) return 1;
+            
+            // Use Levenshtein distance
+            const distance = levenshteinDistance(str1, str2);
+            return 1 - distance / maxLen;
+        }
+        
+        // Levenshtein distance algorithm
+        function levenshteinDistance(str1, str2) {
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const dp = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+            
+            for (let i = 0; i <= len1; i++) dp[i][0] = i;
+            for (let j = 0; j <= len2; j++) dp[0][j] = j;
+            
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1];
+                    } else {
+                        dp[i][j] = Math.min(
+                            dp[i - 1][j] + 1,     // deletion
+                            dp[i][j - 1] + 1,     // insertion
+                            dp[i - 1][j - 1] + 1  // substitution
+                        );
+                    }
+                }
+            }
+            
+            return dp[len1][len2];
+        }
+        
         // HTML转义
         function escapeHtml(text) {
             const map = {
@@ -659,13 +924,13 @@
         // 获取上方的超级块
         async function getSuperBlockAbove() {
             if (!widgetId) {
-                throw new Error('无法获取挂件ID');
+                throw new Error(t.errorWidgetId);
             }
 
             // 获取挂件的父块
             const widgetBlock = await callAPI('/api/block/getBlockInfo', { id: widgetId });
             if (!widgetBlock.data) {
-                throw new Error('无法获取挂件块信息');
+                throw new Error(t.errorWidgetInfo);
             }
 
             // 获取父文档的所有子块
@@ -673,7 +938,7 @@
             const docBlocks = await callAPI('/api/block/getChildBlocks', { id: parentId });
             
             if (!docBlocks.data) {
-                throw new Error('无法获取文档块');
+                throw new Error(t.errorDocBlocks);
             }
 
             // 找到挂件块的位置，然后找上一个超级块
@@ -681,7 +946,7 @@
             const widgetIndex = blocks.findIndex(b => b.id === widgetId);
             
             if (widgetIndex === -1) {
-                throw new Error('无法找到挂件块');
+                throw new Error(t.errorFindWidget);
             }
 
             // 从挂件往上找第一个超级块
@@ -691,7 +956,7 @@
                 }
             }
 
-            throw new Error('在挂件上方未找到超级块');
+            throw new Error(t.errorNoSuperBlock);
         }
 
         // 提取超级块中的左右代码块内容
@@ -699,13 +964,13 @@
             const childBlocks = await callAPI('/api/block/getChildBlocks', { id: superBlockId });
             
             if (!childBlocks.data || childBlocks.data.length < 2) {
-                throw new Error('超级块中代码块数量不足（需要至少2个）');
+                throw new Error(t.errorInsufficientBlocks);
             }
 
             const codeBlocks = childBlocks.data.filter(block => block.type === 'c');  // 'c' 表示代码块
             
             if (codeBlocks.length < 2) {
-                throw new Error('超级块中未找到足够的代码块（需要至少2个）');
+                throw new Error(t.errorInsufficientCodeBlocks);
             }
 
             // 获取前两个代码块的内容
@@ -739,17 +1004,17 @@
         // 加载并显示diff
         async function loadAndShowDiff() {
             try {
-                document.getElementById('diffContent').innerHTML = '<div class="loading">正在加载...</div>';
+                document.getElementById('diffContent').innerHTML = `<div class="loading">${t.loading}</div>`;
                 
                 const superBlock = await getSuperBlockAbove();
                 const { left, right, language } = await extractCodeBlocks(superBlock.id);
 
                 if (!left && !right) {
-                    showStatus('代码块为空，请添加代码内容', 'error');
+                    showStatus(t.emptyCodeBlock, 'error');
                     document.getElementById('diffContent').innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">⚠️</div>
-                            <p>代码块为空</p>
+                            <p>${t.emptyCode}</p>
                         </div>
                     `;
                     return;
@@ -757,15 +1022,15 @@
 
                 const diffResult = computeDiff(left, right);
                 renderDiff(diffResult, language);
-                showHeaderStatus('已更新');
+                showHeaderStatus(t.updated);
 
             } catch (error) {
-                console.error('加载失败:', error);
+                console.error('Load failed:', error);
                 showStatus(error.message, 'error');
                 document.getElementById('diffContent').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">❌</div>
-                        <p>加载失败: ${error.message}</p>
+                        <p>${t.loadFailed}: ${error.message}</p>
                     </div>
                 `;
             }
@@ -775,13 +1040,13 @@
         async function insertComparisonTemplate() {
             try {
                 if (!widgetId) {
-                    throw new Error('无法获取挂件ID');
+                    throw new Error(t.errorWidgetId);
                 }
 
                 // 获取挂件的父块信息
                 const widgetBlock = await callAPI('/api/block/getBlockInfo', { id: widgetId });
                 if (!widgetBlock.data) {
-                    throw new Error('无法获取挂件块信息');
+                    throw new Error(t.errorWidgetInfo);
                 }
 
                 // 获取父文档的所有子块
@@ -789,7 +1054,7 @@
                 const docBlocks = await callAPI('/api/block/getChildBlocks', { id: parentId });
                 
                 if (!docBlocks.data) {
-                    throw new Error('无法获取文档块');
+                    throw new Error(t.errorDocBlocks);
                 }
 
                 // 找到挂件块的位置
@@ -797,19 +1062,19 @@
                 const widgetIndex = blocks.findIndex(b => b.id === widgetId);
                 
                 if (widgetIndex === -1) {
-                    throw new Error('无法找到挂件块');
+                    throw new Error(t.errorFindWidget);
                 }
 
                 // 创建超级块的Markdown
                 const template = `{{{row
 \`\`\`
-原始代码
-在这里输入第一段代码
+${t.originalCode}
+${t.enterFirstCode}
 \`\`\`
 
 \`\`\`
-修改后代码
-在这里输入第二段代码
+${t.modifiedCode}
+${t.enterSecondCode}
 \`\`\`
 }}}`;
 
@@ -834,7 +1099,7 @@
 
                 await callAPI('/api/block/insertBlock', insertParams);
 
-                showStatus('模板已插入到挂件上方', 'success');
+                showStatus(t.templateInserted, 'success');
                 
                 // 延迟刷新以等待块创建完成
                 setTimeout(() => {
@@ -842,8 +1107,8 @@
                 }, 1000);
 
             } catch (error) {
-                console.error('插入模板失败:', error);
-                showStatus('插入模板失败: ' + error.message, 'error');
+                console.error('Failed to insert template:', error);
+                showStatus(t.templateInsertFailed + ': ' + error.message, 'error');
             }
         }
 
@@ -855,15 +1120,20 @@
         console.log('Widget ID:', widgetId);
         console.log('API Base:', API_BASE);
 
-        // 自动加载 - 增加延迟以确保DOM完全加载
-        setTimeout(() => {
+        // 初始化：获取语言设置并自动加载
+        async function initialize() {
+            await getSiYuanLang();
+            
             if (widgetId) {
                 loadAndShowDiff();
             } else {
-                console.error('Widget ID未找到，无法自动加载');
-                showStatus('无法获取挂件ID，请检查挂件配置', 'error');
+                console.error('Widget ID not found');
+                showStatus(t.widgetIdError, 'error');
             }
-        }, 1000);
+        }
+
+        // 延迟初始化以确保DOM完全加载
+        setTimeout(initialize, 1000);
 
         // 定期自动刷新（每5秒），根据checkbox状态
         setInterval(() => {
