@@ -22,6 +22,7 @@
             padding: 16px;
             background: #f8f9fa;
             border-radius: 4px;
+            box-sizing: border-box;
         }
 
         .control-panel {
@@ -74,6 +75,38 @@
             border-bottom: 1px solid #dee2e6;
             font-weight: 600;
             color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .diff-header-title {
+            flex: 1;
+        }
+
+        .diff-header-status {
+            font-size: 12px;
+            font-weight: normal;
+            color: #28a745;
+            margin-left: 16px;
+        }
+
+        .auto-update-control {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            font-weight: normal;
+            color: #495057;
+        }
+
+        .auto-update-control input[type="checkbox"] {
+            margin-right: 4px;
+            cursor: pointer;
+        }
+
+        .auto-update-control label {
+            cursor: pointer;
+            user-select: none;
         }
 
         .diff-content {
@@ -104,6 +137,23 @@
             padding: 0 12px;
             white-space: pre-wrap;
             word-break: break-all;
+        }
+
+        .char-diff {
+            background: rgba(255, 200, 0, 0.5);
+            font-weight: 700;
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+
+        .diff-line.added .char-diff {
+            background: rgba(34, 134, 58, 0.6);
+            color: #0d4b1a;
+        }
+
+        .diff-line.removed .char-diff {
+            background: rgba(215, 58, 73, 0.6);
+            color: #6b1018;
         }
 
         .diff-line.added {
@@ -208,6 +258,32 @@
             color: #dc3545;
             font-weight: 600;
         }
+
+        /* 自定义滚动条样式 */
+        .diff-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .diff-content::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .diff-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .diff-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Firefox 滚动条样式 */
+        .diff-content {
+            scrollbar-width: thin;
+            scrollbar-color: #888 #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -220,7 +296,14 @@
         <div id="statusMessage"></div>
         
         <div class="diff-container">
-            <div class="diff-header">差异对比结果</div>
+            <div class="diff-header">
+                <span class="diff-header-title">差异对比结果</span>
+                <span id="headerStatus" class="diff-header-status"></span>
+                <div class="auto-update-control">
+                    <input type="checkbox" id="autoUpdateCheckbox" checked>
+                    <label for="autoUpdateCheckbox">自动更新</label>
+                </div>
+            </div>
             <div id="diffContent" class="diff-content">
                 <div class="empty-state">
                     <div class="empty-state-icon">📊</div>
@@ -236,70 +319,130 @@
         const widgetId = window.frameElement?.parentElement?.parentElement?.dataset?.nodeId;
         const API_BASE = 'http://127.0.0.1:6806';
 
-        // 简单的diff算法实现
+        // Myers diff algorithm implementation
         function computeDiff(text1, text2) {
             const lines1 = text1.split('\n');
             const lines2 = text2.split('\n');
-            const diff = [];
-            
-            // 使用最长公共子序列(LCS)算法的简化版本
-            const lcs = longestCommonSubsequence(lines1, lines2);
-            
-            let i = 0, j = 0, lcsIndex = 0;
-            
-            while (i < lines1.length || j < lines2.length) {
-                if (lcsIndex < lcs.length && i < lines1.length && lines1[i] === lcs[lcsIndex]) {
-                    // 未改变的行
-                    diff.push({ type: 'unchanged', content: lines1[i], oldLine: i + 1, newLine: j + 1 });
-                    i++;
-                    j++;
-                    lcsIndex++;
-                } else if (i < lines1.length && (lcsIndex >= lcs.length || lines1[i] !== lcs[lcsIndex])) {
-                    // 删除的行
-                    diff.push({ type: 'removed', content: lines1[i], oldLine: i + 1, newLine: null });
-                    i++;
-                } else if (j < lines2.length) {
-                    // 新增的行
-                    diff.push({ type: 'added', content: lines2[j], oldLine: null, newLine: j + 1 });
-                    j++;
-                }
-            }
-            
-            return diff;
-        }
+            const n = lines1.length;
+            const m = lines2.length;
+            const max = n + m;
+            const v = {};
+            const trace = [];
 
-        // 最长公共子序列算法
-        function longestCommonSubsequence(arr1, arr2) {
-            const m = arr1.length;
-            const n = arr2.length;
-            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-            
-            for (let i = 1; i <= m; i++) {
-                for (let j = 1; j <= n; j++) {
-                    if (arr1[i - 1] === arr2[j - 1]) {
-                        dp[i][j] = dp[i - 1][j - 1] + 1;
+            v[1] = 0;
+            for (let d = 0; d <= max; d++) {
+                trace.push({ ...v });
+                for (let k = -d; k <= d; k += 2) {
+                    let x;
+                    if (k === -d || (k !== d && v[k - 1] < v[k + 1])) {
+                        x = v[k + 1];
                     } else {
-                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                        x = v[k - 1] + 1;
+                    }
+                    let y = x - k;
+                    while (x < n && y < m && lines1[x] === lines2[y]) {
+                        x++;
+                        y++;
+                    }
+                    v[k] = x;
+                    if (x >= n && y >= m) {
+                        return buildDiff(lines1, lines2, trace, d);
                     }
                 }
             }
-            
-            // 回溯找到LCS
-            const lcs = [];
-            let i = m, j = n;
-            while (i > 0 && j > 0) {
-                if (arr1[i - 1] === arr2[j - 1]) {
-                    lcs.unshift(arr1[i - 1]);
-                    i--;
-                    j--;
-                } else if (dp[i - 1][j] > dp[i][j - 1]) {
-                    i--;
+            return buildDiff(lines1, lines2, trace, max);
+        }
+
+        function buildDiff(lines1, lines2, trace, d) {
+            const diff = [];
+            let x = lines1.length;
+            let y = lines2.length;
+
+            for (let depth = d; depth >= 0; depth--) {
+                const v = trace[depth];
+                const k = x - y;
+                let prevK;
+                if (k === -depth || (k !== depth && v[k - 1] < v[k + 1])) {
+                    prevK = k + 1;
                 } else {
-                    j--;
+                    prevK = k - 1;
+                }
+                const prevX = v[prevK];
+                const prevY = prevX - prevK;
+
+                while (x > prevX && y > prevY) {
+                    diff.unshift({
+                        type: 'unchanged',
+                        content: lines1[x - 1],
+                        oldLine: x,
+                        newLine: y
+                    });
+                    x--;
+                    y--;
+                }
+
+                if (depth > 0) {
+                    if (x > prevX) {
+                        diff.unshift({
+                            type: 'removed',
+                            content: lines1[x - 1],
+                            oldLine: x,
+                            newLine: null,
+                            oldContent: lines1[x - 1],
+                            newContent: y < lines2.length ? lines2[y] : null
+                        });
+                        x--;
+                    } else if (y > prevY) {
+                        diff.unshift({
+                            type: 'added',
+                            content: lines2[y - 1],
+                            oldLine: null,
+                            newLine: y,
+                            oldContent: x < lines1.length ? lines1[x] : null,
+                            newContent: lines2[y - 1]
+                        });
+                        y--;
+                    }
                 }
             }
+            return diff;
+        }
+
+        // Character-level diff for modified lines
+        function getCharDiff(oldStr, newStr) {
+            if (!oldStr || !newStr) return { old: oldStr || '', new: newStr || '' };
             
-            return lcs;
+            const oldChars = oldStr.split('');
+            const newChars = newStr.split('');
+            const n = oldChars.length;
+            const m = newChars.length;
+            
+            // Find common prefix
+            let prefixLen = 0;
+            while (prefixLen < n && prefixLen < m && oldChars[prefixLen] === newChars[prefixLen]) {
+                prefixLen++;
+            }
+            
+            // Find common suffix
+            let suffixLen = 0;
+            while (suffixLen < n - prefixLen && suffixLen < m - prefixLen && 
+                   oldChars[n - 1 - suffixLen] === newChars[m - 1 - suffixLen]) {
+                suffixLen++;
+            }
+            
+            const prefix = escapeHtml(oldStr.substring(0, prefixLen));
+            const suffix = escapeHtml(oldStr.substring(n - suffixLen));
+            const oldMiddle = oldStr.substring(prefixLen, n - suffixLen);
+            const newMiddle = newStr.substring(prefixLen, m - suffixLen);
+            
+            const oldResult = prefix + 
+                (oldMiddle ? `<span class="char-diff">${escapeHtml(oldMiddle)}</span>` : '') + 
+                suffix;
+            const newResult = prefix + 
+                (newMiddle ? `<span class="char-diff">${escapeHtml(newMiddle)}</span>` : '') + 
+                suffix;
+            
+            return { old: oldResult, new: newResult };
         }
 
         // 渲染diff结果
@@ -330,12 +473,75 @@
                 </div>
             `;
 
-            diffResult.forEach(line => {
+            // Improved grouping: handle multiple consecutive removed/added blocks
+            const grouped = [];
+            let i = 0;
+            
+            while (i < diffResult.length) {
+                const curr = diffResult[i];
+                
+                if (curr.type === 'unchanged') {
+                    grouped.push(curr);
+                    i++;
+                    continue;
+                }
+                
+                // Collect consecutive removed lines
+                const removedBlock = [];
+                while (i < diffResult.length && diffResult[i].type === 'removed') {
+                    removedBlock.push(diffResult[i]);
+                    i++;
+                }
+                
+                // Collect consecutive added lines
+                const addedBlock = [];
+                while (i < diffResult.length && diffResult[i].type === 'added') {
+                    addedBlock.push(diffResult[i]);
+                    i++;
+                }
+                
+                // If we have both removed and added lines, apply char-level diff
+                if (removedBlock.length > 0 && addedBlock.length > 0) {
+                    const maxLines = Math.max(removedBlock.length, addedBlock.length);
+                    
+                    for (let j = 0; j < maxLines; j++) {
+                        if (j < removedBlock.length && j < addedBlock.length) {
+                            // Both lines exist - apply char diff
+                            const charDiff = getCharDiff(removedBlock[j].content, addedBlock[j].content);
+                            grouped.push({
+                                type: 'removed',
+                                content: charDiff.old,
+                                oldLine: removedBlock[j].oldLine,
+                                isHtml: true
+                            });
+                            grouped.push({
+                                type: 'added',
+                                content: charDiff.new,
+                                newLine: addedBlock[j].newLine,
+                                isHtml: true
+                            });
+                        } else if (j < removedBlock.length) {
+                            // Only removed line exists
+                            grouped.push(removedBlock[j]);
+                        } else {
+                            // Only added line exists
+                            grouped.push(addedBlock[j]);
+                        }
+                    }
+                } else {
+                    // Only one type exists - add them as is
+                    grouped.push(...removedBlock);
+                    grouped.push(...addedBlock);
+                }
+            }
+
+            grouped.forEach(line => {
                 const lineNum = line.oldLine || line.newLine || '';
+                const content = line.isHtml ? line.content : escapeHtml(line.content);
                 html += `
                     <div class="diff-line ${line.type}">
                         <span class="line-number">${lineNum}</span>
-                        <span class="line-content">${escapeHtml(line.content)}</span>
+                        <span class="line-content">${content}</span>
                     </div>
                 `;
             });
@@ -355,7 +561,16 @@
             return text.replace(/[&<>"']/g, m => map[m]);
         }
 
-        // 显示状态消息
+        // 显示状态消息（在header中显示）
+        function showHeaderStatus(message) {
+            const headerStatus = document.getElementById('headerStatus');
+            headerStatus.textContent = message;
+            setTimeout(() => {
+                headerStatus.textContent = '';
+            }, 3000);
+        }
+
+        // 显示错误消息（使用旧的弹出样式）
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('statusMessage');
             statusDiv.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
@@ -473,7 +688,7 @@
 
                 const diffResult = computeDiff(left, right);
                 renderDiff(diffResult);
-                showStatus('差异对比已更新', 'success');
+                showHeaderStatus('已更新');
 
             } catch (error) {
                 console.error('加载失败:', error);
@@ -581,9 +796,10 @@
             }
         }, 1000);
 
-        // 定期自动刷新（每5秒）
+        // 定期自动刷新（每5秒），根据checkbox状态
         setInterval(() => {
-            if (widgetId) {
+            const autoUpdateCheckbox = document.getElementById('autoUpdateCheckbox');
+            if (widgetId && autoUpdateCheckbox && autoUpdateCheckbox.checked) {
                 loadAndShowDiff();
             }
         }, 5000);
