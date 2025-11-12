@@ -80,6 +80,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .diff-header-title {
@@ -109,6 +111,143 @@
         .auto-update-control label {
             cursor: pointer;
             user-select: none;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: #fff;
+            border-radius: 4px;
+            padding: 2px;
+            border: 1px solid #dee2e6;
+        }
+
+        .view-toggle button {
+            padding: 4px 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 3px;
+            transition: all 0.2s;
+            color: #495057;
+        }
+
+        .view-toggle button:hover {
+            background: #e9ecef;
+        }
+
+        .view-toggle button.active {
+            background: #007bff;
+            color: white;
+        }
+
+        /* Split view styles */
+        .diff-split-view {
+            display: flex;
+            width: 100%;
+            min-height: 400px;
+        }
+
+        .diff-split-pane {
+            flex: 1;
+            width: 50%;
+            overflow-x: auto;
+            border-right: 2px solid #e1e4e8;
+        }
+
+        .diff-split-pane:last-child {
+            border-right: none;
+        }
+
+        .diff-split-header {
+            padding: 8px 12px;
+            background: #f6f8fa;
+            border-bottom: 1px solid #e1e4e8;
+            font-weight: 600;
+            font-size: 13px;
+            color: #24292e;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .diff-split-header.removed {
+            background: #ffeef0;
+            border-bottom-color: #fdb8c0;
+        }
+
+        .diff-split-header.added {
+            background: #e6ffed;
+            border-bottom-color: #9be9a8;
+        }
+
+        .diff-split-content {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .diff-split-line {
+            display: flex;
+            min-height: 20px;
+            padding: 2px 0;
+        }
+
+        .diff-split-line.removed {
+            background: #ffeef0;
+        }
+
+        .diff-split-line.added {
+            background: #e6ffed;
+        }
+
+        .diff-split-line.unchanged {
+            background: white;
+        }
+
+        .diff-split-line.empty {
+            background: #fafbfc;
+        }
+
+        .split-line-number {
+            min-width: 50px;
+            padding: 0 8px;
+            text-align: right;
+            color: rgba(27,31,35,0.3);
+            user-select: none;
+            flex-shrink: 0;
+            font-size: 12px;
+            background: #f6f8fa;
+            border-right: 1px solid #e1e4e8;
+        }
+
+        .split-line-content {
+            flex: 1;
+            padding: 0 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .split-line-content code {
+            background: none;
+            padding: 0;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .split-line-content .hljs {
+            background: transparent;
+            padding: 0;
+            overflow: visible;
+        }
+
+        .diff-split-line.removed .char-diff {
+            background: rgba(215, 58, 73, 0.4);
+        }
+
+        .diff-split-line.added .char-diff {
+            background: rgba(34, 134, 58, 0.4);
         }
 
         .diff-content {
@@ -343,6 +482,10 @@
                     <button id="insertBtn" class="btn btn-primary">📝 插入对比模板</button>
                     <button id="refreshBtn" class="btn btn-success">🔄 刷新对比</button>
                 </div>
+                <div class="view-toggle">
+                    <button id="unifiedViewBtn" class="active">统一视图</button>
+                    <button id="splitViewBtn">分栏视图</button>
+                </div>
                 <div class="auto-update-control">
                     <input type="checkbox" id="autoUpdateCheckbox" checked>
                     <label for="autoUpdateCheckbox">自动更新</label>
@@ -369,6 +512,10 @@
                 insertTemplate: '📝 插入对比模板',
                 refresh: '🔄 刷新对比',
                 autoUpdate: '自动更新',
+                unifiedView: '统一视图',
+                splitView: '分栏视图',
+                originalCode: '原始代码',
+                modifiedCode: '修改后代码',
                 waitingForData: '等待加载对比数据...',
                 insertTemplateHint: '请在此挂件上方插入对比模板或手动创建包含左右代码块的超级块',
                 identical: '两段代码完全相同',
@@ -381,8 +528,6 @@
                 templateInsertFailed: '插入模板失败',
                 updated: '已更新',
                 emptyCodeBlock: '代码块为空，请添加代码内容',
-                originalCode: '原始代码',
-                modifiedCode: '修改后代码',
                 enterFirstCode: '在这里输入第一段代码',
                 enterSecondCode: '在这里输入第二段代码',
                 widgetIdError: '无法获取挂件ID，请检查挂件配置',
@@ -399,6 +544,10 @@
                 insertTemplate: '📝 Insert Template',
                 refresh: '🔄 Refresh',
                 autoUpdate: 'Auto Update',
+                unifiedView: 'Unified',
+                splitView: 'Split',
+                originalCode: 'Original Code',
+                modifiedCode: 'Modified Code',
                 waitingForData: 'Waiting for comparison data...',
                 insertTemplateHint: 'Please insert a comparison template above this widget or manually create a super block containing left and right code blocks',
                 identical: 'Both code blocks are identical',
@@ -411,8 +560,6 @@
                 templateInsertFailed: 'Failed to insert template',
                 updated: 'Updated',
                 emptyCodeBlock: 'Code block is empty, please add code content',
-                originalCode: 'Original Code',
-                modifiedCode: 'Modified Code',
                 enterFirstCode: 'Enter the first code snippet here',
                 enterSecondCode: 'Enter the second code snippet here',
                 widgetIdError: 'Cannot get widget ID, please check widget configuration',
@@ -428,6 +575,8 @@
 
         let currentLang = 'zh_CN';
         let t = i18n[currentLang];
+        let currentView = 'unified'; // 'unified' or 'split'
+        let currentDiffData = null; // Store current diff data for view switching
 
         // Get SiYuan language setting
         async function getSiYuanLang() {
@@ -457,6 +606,8 @@
             document.querySelector('.diff-header-title').textContent = t.diffTitle;
             document.getElementById('insertBtn').innerHTML = t.insertTemplate;
             document.getElementById('refreshBtn').innerHTML = t.refresh;
+            document.getElementById('unifiedViewBtn').textContent = t.unifiedView;
+            document.getElementById('splitViewBtn').textContent = t.splitView;
             document.querySelector('.auto-update-control label').textContent = t.autoUpdate;
             
             const emptyStateText = document.getElementById('emptyStateText');
@@ -624,7 +775,149 @@
             return { old: oldResult, new: newResult };
         }
 
-        // 渲染diff结果
+        // Render split view
+        function renderSplitView(leftLines, rightLines, language = 'plaintext') {
+            const container = document.getElementById('diffContent');
+            
+            // Calculate statistics
+            let addedCount = 0;
+            let removedCount = 0;
+            rightLines.forEach(line => { if (line && line.type === 'added') addedCount++; });
+            leftLines.forEach(line => { if (line && line.type === 'removed') removedCount++; });
+            
+            let html = `
+                <div class="diff-stats">
+                    <span class="added-count">+${addedCount} ${t.added}</span>
+                    <span class="removed-count">-${removedCount} ${t.removed}</span>
+                </div>
+                <div class="diff-split-view">
+                    <div class="diff-split-pane">
+                        <div class="diff-split-header removed">${t.originalCode}</div>
+                        <div class="diff-split-content">
+            `;
+            
+            // Render left pane (original)
+            leftLines.forEach(line => {
+                if (!line) {
+                    html += `
+                        <div class="diff-split-line empty">
+                            <span class="split-line-number"></span>
+                            <span class="split-line-content"></span>
+                        </div>
+                    `;
+                } else {
+                    const content = line.isHtml ? line.content : highlightCode(line.content, language);
+                    const lineClass = line.type === 'removed' ? 'removed' : (line.type === 'unchanged' ? 'unchanged' : 'empty');
+                    html += `
+                        <div class="diff-split-line ${lineClass}">
+                            <span class="split-line-number">${line.oldLine || ''}</span>
+                            <span class="split-line-content">${content}</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                    <div class="diff-split-pane">
+                        <div class="diff-split-header added">${t.modifiedCode}</div>
+                        <div class="diff-split-content">
+            `;
+            
+            // Render right pane (modified)
+            rightLines.forEach(line => {
+                if (!line) {
+                    html += `
+                        <div class="diff-split-line empty">
+                            <span class="split-line-number"></span>
+                            <span class="split-line-content"></span>
+                        </div>
+                    `;
+                } else {
+                    const content = line.isHtml ? line.content : highlightCode(line.content, language);
+                    const lineClass = line.type === 'added' ? 'added' : (line.type === 'unchanged' ? 'unchanged' : 'empty');
+                    html += `
+                        <div class="diff-split-line ${lineClass}">
+                            <span class="split-line-number">${line.newLine || ''}</span>
+                            <span class="split-line-content">${content}</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        // Convert unified diff to split view format
+        function convertToSplitFormat(diffResult, language = 'plaintext') {
+            const leftLines = [];
+            const rightLines = [];
+            
+            let i = 0;
+            while (i < diffResult.length) {
+                const curr = diffResult[i];
+                
+                if (curr.type === 'unchanged') {
+                    // Both sides show the same line
+                    leftLines.push({
+                        ...curr,
+                        content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
+                        isHtml: true
+                    });
+                    rightLines.push({
+                        ...curr,
+                        content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
+                        isHtml: true
+                    });
+                    i++;
+                } else if (curr.type === 'removed') {
+                    // Check if next line is added (potential modification)
+                    if (i + 1 < diffResult.length && diffResult[i + 1].type === 'added') {
+                        // Show as modification on both sides
+                        leftLines.push({
+                            ...curr,
+                            content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
+                            isHtml: true
+                        });
+                        rightLines.push({
+                            ...diffResult[i + 1],
+                            content: diffResult[i + 1].isHtml ? diffResult[i + 1].content : highlightCode(diffResult[i + 1].content, language),
+                            isHtml: true
+                        });
+                        i += 2;
+                    } else {
+                        // Only removed, show on left, empty on right
+                        leftLines.push({
+                            ...curr,
+                            content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
+                            isHtml: true
+                        });
+                        rightLines.push(null);
+                        i++;
+                    }
+                } else if (curr.type === 'added') {
+                    // Only added, empty on left, show on right
+                    leftLines.push(null);
+                    rightLines.push({
+                        ...curr,
+                        content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
+                        isHtml: true
+                    });
+                    i++;
+                }
+            }
+            
+            return { leftLines, rightLines };
+        }
+
+        // 渲染diff结果 (unified view)
         function renderDiff(diffResult, language = 'plaintext') {
             const container = document.getElementById('diffContent');
             
@@ -833,6 +1126,35 @@
             container.innerHTML = html;
         }
 
+        // Render current view
+        function renderCurrentView() {
+            if (!currentDiffData) return;
+            
+            if (currentView === 'split') {
+                const { leftLines, rightLines } = convertToSplitFormat(currentDiffData.diffResult, currentDiffData.language);
+                renderSplitView(leftLines, rightLines, currentDiffData.language);
+            } else {
+                renderDiff(currentDiffData.diffResult, currentDiffData.language);
+            }
+        }
+
+        // Switch view
+        function switchView(view) {
+            if (view === currentView) return;
+            
+            currentView = view;
+            
+            // Update button states
+            document.getElementById('unifiedViewBtn').classList.toggle('active', view === 'unified');
+            document.getElementById('splitViewBtn').classList.toggle('active', view === 'split');
+            
+            // Re-render with new view
+            renderCurrentView();
+            
+            // Save preference
+            localStorage.setItem('sy-widget-show-diff-view', view);
+        }
+
         // Calculate similarity between two strings (0 to 1)
         function calculateSimilarity(str1, str2) {
             if (str1 === str2) return 1;
@@ -1016,11 +1338,20 @@
                             <p>${t.emptyCode}</p>
                         </div>
                     `;
+                    currentDiffData = null;
                     return;
                 }
 
                 const diffResult = computeDiff(left, right);
-                renderDiff(diffResult, language);
+                
+                // Store diff data for view switching
+                currentDiffData = {
+                    diffResult: diffResult,
+                    language: language
+                };
+                
+                // Render based on current view
+                renderCurrentView();
                 showHeaderStatus(t.updated);
 
             } catch (error) {
@@ -1032,6 +1363,7 @@
                         <p>${t.loadFailed}: ${error.message}</p>
                     </div>
                 `;
+                currentDiffData = null;
             }
         }
 
@@ -1136,6 +1468,8 @@ ${t.enterSecondCode}
         // 事件监听
         document.getElementById('insertBtn').addEventListener('click', insertComparisonTemplate);
         document.getElementById('refreshBtn').addEventListener('click', loadAndShowDiff);
+        document.getElementById('unifiedViewBtn').addEventListener('click', () => switchView('unified'));
+        document.getElementById('splitViewBtn').addEventListener('click', () => switchView('split'));
         
         // Listen for auto-update checkbox changes
         document.getElementById('autoUpdateCheckbox').addEventListener('change', (event) => {
@@ -1146,6 +1480,14 @@ ${t.enterSecondCode}
         async function initialize() {
             // Load saved auto-update preference
             loadAutoUpdatePreference();
+            
+            // Load saved view preference
+            const savedView = localStorage.getItem('sy-widget-show-diff-view');
+            if (savedView === 'split') {
+                currentView = 'split';
+                document.getElementById('unifiedViewBtn').classList.remove('active');
+                document.getElementById('splitViewBtn').classList.add('active');
+            }
             
             await getSiYuanLang();
             
