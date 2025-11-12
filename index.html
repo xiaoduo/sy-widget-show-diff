@@ -878,29 +878,106 @@
                     });
                     i++;
                 } else if (curr.type === 'removed') {
-                    // Check if next line is added (potential modification)
-                    if (i + 1 < diffResult.length && diffResult[i + 1].type === 'added') {
-                        // Show as modification on both sides
-                        leftLines.push({
-                            ...curr,
-                            content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
-                            isHtml: true
-                        });
-                        rightLines.push({
-                            ...diffResult[i + 1],
-                            content: diffResult[i + 1].isHtml ? diffResult[i + 1].content : highlightCode(diffResult[i + 1].content, language),
-                            isHtml: true
-                        });
-                        i += 2;
-                    } else {
-                        // Only removed, show on left, empty on right
-                        leftLines.push({
-                            ...curr,
-                            content: curr.isHtml ? curr.content : highlightCode(curr.content, language),
-                            isHtml: true
-                        });
-                        rightLines.push(null);
+                    // Collect consecutive removed lines
+                    const removedBlock = [];
+                    while (i < diffResult.length && diffResult[i].type === 'removed') {
+                        removedBlock.push(diffResult[i]);
                         i++;
+                    }
+                    
+                    // Collect consecutive added lines
+                    const addedBlock = [];
+                    while (i < diffResult.length && diffResult[i].type === 'added') {
+                        addedBlock.push(diffResult[i]);
+                        i++;
+                    }
+                    
+                    // If we have both, try to pair them with character-level diff
+                    if (removedBlock.length > 0 && addedBlock.length > 0) {
+                        // Calculate similarity for pairing
+                        const pairs = [];
+                        for (let r = 0; r < removedBlock.length; r++) {
+                            for (let a = 0; a < addedBlock.length; a++) {
+                                const similarity = calculateSimilarity(removedBlock[r].content, addedBlock[a].content);
+                                pairs.push({ r, a, similarity });
+                            }
+                        }
+                        
+                        pairs.sort((a, b) => b.similarity - a.similarity);
+                        
+                        const usedRemoved = new Set();
+                        const usedAdded = new Set();
+                        
+                        // Pair similar lines (similarity > 0.3) with character-level diff
+                        for (const pair of pairs) {
+                            if (!usedRemoved.has(pair.r) && !usedAdded.has(pair.a) && pair.similarity > 0.3) {
+                                usedRemoved.add(pair.r);
+                                usedAdded.add(pair.a);
+                                
+                                // Apply character-level diff for paired lines
+                                const charDiff = getCharDiff(removedBlock[pair.r].content, addedBlock[pair.a].content, language);
+                                
+                                leftLines.push({
+                                    type: 'removed',
+                                    content: charDiff.old,
+                                    oldLine: removedBlock[pair.r].oldLine,
+                                    newLine: null,
+                                    isHtml: true
+                                });
+                                
+                                rightLines.push({
+                                    type: 'added',
+                                    content: charDiff.new,
+                                    oldLine: null,
+                                    newLine: addedBlock[pair.a].newLine,
+                                    isHtml: true
+                                });
+                            }
+                        }
+                        
+                        // Add unpaired removed lines
+                        for (let r = 0; r < removedBlock.length; r++) {
+                            if (!usedRemoved.has(r)) {
+                                leftLines.push({
+                                    ...removedBlock[r],
+                                    content: removedBlock[r].isHtml ? removedBlock[r].content : highlightCode(removedBlock[r].content, language),
+                                    isHtml: true
+                                });
+                                rightLines.push(null);
+                            }
+                        }
+                        
+                        // Add unpaired added lines
+                        for (let a = 0; a < addedBlock.length; a++) {
+                            if (!usedAdded.has(a)) {
+                                leftLines.push(null);
+                                rightLines.push({
+                                    ...addedBlock[a],
+                                    content: addedBlock[a].isHtml ? addedBlock[a].content : highlightCode(addedBlock[a].content, language),
+                                    isHtml: true
+                                });
+                            }
+                        }
+                    } else if (removedBlock.length > 0) {
+                        // Only removed lines
+                        removedBlock.forEach(line => {
+                            leftLines.push({
+                                ...line,
+                                content: line.isHtml ? line.content : highlightCode(line.content, language),
+                                isHtml: true
+                            });
+                            rightLines.push(null);
+                        });
+                    } else if (addedBlock.length > 0) {
+                        // Only added lines
+                        addedBlock.forEach(line => {
+                            leftLines.push(null);
+                            rightLines.push({
+                                ...line,
+                                content: line.isHtml ? line.content : highlightCode(line.content, language),
+                                isHtml: true
+                            });
+                        });
                     }
                 } else if (curr.type === 'added') {
                     // Only added, empty on left, show on right
