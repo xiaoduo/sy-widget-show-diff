@@ -878,103 +878,77 @@
                     });
                     i++;
                 } else if (curr.type === 'removed') {
+                    // Stable block handling for removed + added lines preserving original order
                     // Collect consecutive removed lines
                     const removedBlock = [];
                     while (i < diffResult.length && diffResult[i].type === 'removed') {
                         removedBlock.push(diffResult[i]);
                         i++;
                     }
-                    
-                    // Collect consecutive added lines
+                    // Collect consecutive added lines directly following
                     const addedBlock = [];
                     while (i < diffResult.length && diffResult[i].type === 'added') {
                         addedBlock.push(diffResult[i]);
                         i++;
                     }
-                    
-                    // If we have both, try to pair them with character-level diff
-                    if (removedBlock.length > 0 && addedBlock.length > 0) {
-                        // Calculate similarity for pairing
-                        const pairs = [];
-                        for (let r = 0; r < removedBlock.length; r++) {
-                            for (let a = 0; a < addedBlock.length; a++) {
-                                const similarity = calculateSimilarity(removedBlock[r].content, addedBlock[a].content);
-                                pairs.push({ r, a, similarity });
-                            }
-                        }
-                        
-                        pairs.sort((a, b) => b.similarity - a.similarity);
-                        
-                        const usedRemoved = new Set();
-                        const usedAdded = new Set();
-                        
-                        // Pair similar lines (similarity > 0.3) with character-level diff
-                        for (const pair of pairs) {
-                            if (!usedRemoved.has(pair.r) && !usedAdded.has(pair.a) && pair.similarity > 0.3) {
-                                usedRemoved.add(pair.r);
-                                usedAdded.add(pair.a);
-                                
-                                // Apply character-level diff for paired lines
-                                const charDiff = getCharDiff(removedBlock[pair.r].content, addedBlock[pair.a].content, language);
-                                
-                                leftLines.push({
-                                    type: 'removed',
-                                    content: charDiff.old,
-                                    oldLine: removedBlock[pair.r].oldLine,
-                                    newLine: null,
-                                    isHtml: true
-                                });
-                                
-                                rightLines.push({
-                                    type: 'added',
-                                    content: charDiff.new,
-                                    oldLine: null,
-                                    newLine: addedBlock[pair.a].newLine,
-                                    isHtml: true
-                                });
-                            }
-                        }
-                        
-                        // Add unpaired removed lines
-                        for (let r = 0; r < removedBlock.length; r++) {
-                            if (!usedRemoved.has(r)) {
-                                leftLines.push({
-                                    ...removedBlock[r],
-                                    content: removedBlock[r].isHtml ? removedBlock[r].content : highlightCode(removedBlock[r].content, language),
-                                    isHtml: true
-                                });
-                                rightLines.push(null);
-                            }
-                        }
-                        
-                        // Add unpaired added lines
-                        for (let a = 0; a < addedBlock.length; a++) {
-                            if (!usedAdded.has(a)) {
-                                leftLines.push(null);
-                                rightLines.push({
-                                    ...addedBlock[a],
-                                    content: addedBlock[a].isHtml ? addedBlock[a].content : highlightCode(addedBlock[a].content, language),
-                                    isHtml: true
-                                });
-                            }
-                        }
-                    } else if (removedBlock.length > 0) {
-                        // Only removed lines
-                        removedBlock.forEach(line => {
+
+                    if (removedBlock.length && addedBlock.length) {
+                        // Pair lines by index (stable) to keep ascending line numbers.
+                        const pairCount = Math.min(removedBlock.length, addedBlock.length);
+                        for (let k = 0; k < pairCount; k++) {
+                            const rem = removedBlock[k];
+                            const add = addedBlock[k];
+                            const charDiff = getCharDiff(rem.content, add.content, language);
                             leftLines.push({
-                                ...line,
-                                content: line.isHtml ? line.content : highlightCode(line.content, language),
+                                type: 'removed',
+                                content: charDiff.old,
+                                oldLine: rem.oldLine,
+                                newLine: null,
+                                isHtml: true
+                            });
+                            rightLines.push({
+                                type: 'added',
+                                content: charDiff.new,
+                                oldLine: null,
+                                newLine: add.newLine,
+                                isHtml: true
+                            });
+                        }
+                        // Remaining removed lines (if any)
+                        for (let k = pairCount; k < removedBlock.length; k++) {
+                            const rem = removedBlock[k];
+                            leftLines.push({
+                                ...rem,
+                                content: rem.isHtml ? rem.content : highlightCode(rem.content, language),
+                                isHtml: true
+                            });
+                            rightLines.push(null);
+                        }
+                        // Remaining added lines (if any)
+                        for (let k = pairCount; k < addedBlock.length; k++) {
+                            const add = addedBlock[k];
+                            leftLines.push(null);
+                            rightLines.push({
+                                ...add,
+                                content: add.isHtml ? add.content : highlightCode(add.content, language),
+                                isHtml: true
+                            });
+                        }
+                    } else if (removedBlock.length) {
+                        removedBlock.forEach(rem => {
+                            leftLines.push({
+                                ...rem,
+                                content: rem.isHtml ? rem.content : highlightCode(rem.content, language),
                                 isHtml: true
                             });
                             rightLines.push(null);
                         });
-                    } else if (addedBlock.length > 0) {
-                        // Only added lines
-                        addedBlock.forEach(line => {
+                    } else if (addedBlock.length) {
+                        addedBlock.forEach(add => {
                             leftLines.push(null);
                             rightLines.push({
-                                ...line,
-                                content: line.isHtml ? line.content : highlightCode(line.content, language),
+                                ...add,
+                                content: add.isHtml ? add.content : highlightCode(add.content, language),
                                 isHtml: true
                             });
                         });
