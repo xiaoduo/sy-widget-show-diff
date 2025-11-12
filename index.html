@@ -321,14 +321,30 @@
             border-radius: 2px;
         }
 
+        /* New explicit char-level diff highlight colors for additions and deletions */
+        .char-add {
+            background: #a7e9ba; /* slightly darker soft green */
+            color: inherit; /* keep original code color */
+            font-weight: 600;
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+        .char-del {
+            background: #ffbfc9; /* slightly darker soft red */
+            color: inherit; /* keep original code color */
+            font-weight: 600;
+            padding: 1px 2px;
+            border-radius: 2px;
+        }
+
         .diff-line.added .char-diff {
-            background: rgba(34, 134, 58, 0.6);
-            color: #0d4b1a;
+            background: rgba(34, 134, 58, 0.35); /* darken for better contrast */
+            color: inherit;
         }
 
         .diff-line.removed .char-diff {
-            background: rgba(215, 58, 73, 0.6);
-            color: #6b1018;
+            background: rgba(215, 58, 73, 0.35); /* darken for better contrast */
+            color: inherit;
         }
 
         .diff-line.added {
@@ -765,15 +781,26 @@
             const oldMiddle = oldStr.substring(prefixLen, n - suffixLen);
             const newMiddle = newStr.substring(prefixLen, m - suffixLen);
             
+            // Use distinct classes for removed (old) and added (new) segments
             const oldResult = prefix + 
-                (oldMiddle ? `<span class="char-diff">${highlightCode(oldMiddle, language)}</span>` : '') + 
+                (oldMiddle ? `<span class="char-del">${highlightCode(oldMiddle, language)}</span>` : '') + 
                 suffix;
             const newResult = prefix + 
-                (newMiddle ? `<span class="char-diff">${highlightCode(newMiddle, language)}</span>` : '') + 
+                (newMiddle ? `<span class="char-add">${highlightCode(newMiddle, language)}</span>` : '') + 
                 suffix;
             
             return { old: oldResult, new: newResult };
         }
+
+        // Self-test to verify new char-add / char-del highlighting (console only)
+        (function() {
+            try {
+                const sample = getCharDiff('const value = 1;', 'const value = 10;', 'javascript');
+                console.log('[sy-widget-show-diff] char diff sample (old/new):', sample);
+            } catch (e) {
+                console.warn('[sy-widget-show-diff] char diff self-test failed:', e);
+            }
+        })();
 
         // Render split view
         function renderSplitView(leftLines, rightLines, language = 'plaintext') {

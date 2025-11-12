@@ -9,6 +9,7 @@ A SiYuan note widget that automatically displays the diff between two code block
 - 🔄 **Auto-refresh**: Automatically updates the diff result every 5 seconds
 - 📝 **Template insertion**: One-click button to insert the comparison template structure
 - 🎨 **Visual diff display**: Clear visualization with green (additions) and red (deletions)
+- 🧬 **Character-level highlighting**: Added vs deleted characters inside modified lines now use distinct soft green/red highlight colors
 - 📊 **Statistics**: Shows the number of added and removed lines
 - 🖥️ **100% width**: Full-width display by default
 - ⚡ **Real-time**: Reads content from super block above and displays diff immediately
@@ -65,6 +66,8 @@ If you prefer to create the structure manually:
   - 🟢 Green background: Added lines
   - 🔴 Red background: Removed lines
   - ⚪ White background: Unchanged lines
+  - 🟢 Soft green inline highlight: Added characters inside modified lines
+  - 🔴 Soft red inline highlight: Removed characters inside modified lines
 - **Statistics**: Displays total number of additions and deletions
 - **Responsive**: Full-width display adapts to container size
 
