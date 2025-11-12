@@ -82,13 +82,6 @@ If you prefer to create the structure manually:
 ## Todo
 - Add split diff view
 
-## Technical Details
-
-- Uses Longest Common Subsequence (LCS) algorithm for accurate diff calculation
-- Communicates with SiYuan via local API (http://127.0.0.1:6806)
-- Pure JavaScript implementation, no external dependencies
-- Auto-detects widget position and reads content from super block above
-
 ## Troubleshooting
 
 **Error: "在挂件上方未找到超级块"**

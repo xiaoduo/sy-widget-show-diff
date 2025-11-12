@@ -361,7 +361,6 @@
     <script>
         // 获取挂件所在块的ID
         const widgetId = window.frameElement?.parentElement?.parentElement?.dataset?.nodeId;
-        const API_BASE = 'http://127.0.0.1:6806';
 
         // Internationalization
         const i18n = {
@@ -909,7 +908,7 @@
         // 调用思源API
         async function callAPI(url, data) {
             try {
-                const response = await fetch(API_BASE + url, {
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -1127,14 +1126,11 @@ ${t.enterSecondCode}
                 // Default to checked if no preference saved
                 autoUpdateCheckbox.checked = true;
             }
-            
-            console.log('Auto-update preference loaded:', autoUpdateCheckbox.checked);
         }
 
         // Save auto-update preference to localStorage
         function saveAutoUpdatePreference(checked) {
             localStorage.setItem(AUTO_UPDATE_KEY, checked.toString());
-            console.log('Auto-update preference saved:', checked);
         }
 
         // 事件监听
@@ -1145,10 +1141,6 @@ ${t.enterSecondCode}
         document.getElementById('autoUpdateCheckbox').addEventListener('change', (event) => {
             saveAutoUpdatePreference(event.target.checked);
         });
-
-        // 调试信息
-        console.log('Widget ID:', widgetId);
-        console.log('API Base:', API_BASE);
 
         // 初始化：获取语言设置并自动加载
         async function initialize() {

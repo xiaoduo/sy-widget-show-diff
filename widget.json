@@ -10,7 +10,7 @@
   },
   "description": {
     "default": "A widget that automatically displays the diff between two code blocks in a super block above it",
-    "zh_CN": "自动显示上方超级块中左右两个代码块差异的挂件"
+    "zh_CN": "自动显示上方超级块中两个代码块差异的挂件"
   },
   "readme": {
     "default": "README.md",
