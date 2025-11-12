@@ -79,6 +79,9 @@ If you prefer to create the structure manually:
 - SiYuan version: 2.8.8 or higher
 - The widget must be placed below a super block containing two code blocks
 
+## Todo
+- Add split diff view
+
 ## Technical Details
 
 - Uses Longest Common Subsequence (LCS) algorithm for accurate diff calculation
