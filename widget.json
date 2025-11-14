@@ -2,7 +2,7 @@
   "name": "sy-widget-show-diff",
   "author": "xiaoduo",
   "url": "https://github.com/xiaoduo/sy-widget-show-diff",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "minAppVersion": "2.8.8",
   "displayName": {
     "default": "Show Diff Widget",
