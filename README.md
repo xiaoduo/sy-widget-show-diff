@@ -82,9 +82,6 @@ If you prefer to create the structure manually:
 - SiYuan version: 2.8.8 or higher
 - The widget must be placed below a super block containing two code blocks
 
-## Todo
-- Add split diff view
-
 ## Troubleshooting
 
 **Error: "在挂件上方未找到超级块"**
